@@ -1,6 +1,6 @@
 var ph = new PlotCanvas();
-var CWIDTH = 320;
-var CHEIGHT = 240;
+var CWIDTH = 1280;
+var CHEIGHT = 480;
 
 $(function() {	
 	init();

@@ -15,20 +15,25 @@ function PlotCanvas() {
 
 	this.settings = {
 		lineColor: 			"#aaa",
-		lineWidth: 			2,
+		lineWidth: 			4,
 		
-		markerColor: 		"#49b",
-		markerSize: 		6,
-		
-		padding : 			0.2,
+		markerColor: 		"#6ad",
+		markerSize: 		10,
 
-		axisColor: "#ddd",
-		axisWidth: 0.5,
-		axisFontColor: "#ddd",
-		axisFontSize: "10px",
-		axisMode: "hor",
-		axisXRes: 1,
-		axisYRes: 1
+		barColor: 			"#6ad",
+		barBorderColor: 	"#48b",
+
+		space: 				5,
+		padding: 			0.2,
+
+		axisColor: 			"#ddd",
+		axisWidth: 			1,
+		axisFontColor: 		"#ddd",
+		axisFont: 			"20px Arial",
+		axisFontSize: 		20,
+		axisMode: 			"hor",
+		axisXRes: 			1,
+		axisYRes: 			1
 	}
 	
 }
@@ -36,12 +41,18 @@ function PlotCanvas() {
 // --------------------
 // Get-Set
 // --------------------
+
 PlotCanvas.prototype.setCanvas = function(c) {
 	this.canvas = c;
 	this.context = c.getContext("2d");
 }
 
-PlotCanvas.prototype.setAxes = function(x1,x2,y1,y2) {
+PlotCanvas.prototype.setAxes = function(ref_x1, ref_x2, ref_y1, ref_y2) {
+	var x1 = ((ref_x1+ref_x2)/2) + (ref_x1 - ((ref_x1+ref_x2)/2))/(1-this.settings.padding);
+	var x2 = ((ref_x1+ref_x2)/2) + (ref_x2 - ((ref_x1+ref_x2)/2))/(1-this.settings.padding);
+	var y1 = ((ref_y1+ref_y2)/2) + (ref_y1 - ((ref_y1+ref_y2)/2))/(1-this.settings.padding);
+	var y2 = ((ref_y1+ref_y2)/2) + (ref_y2 - ((ref_y1+ref_y2)/2))/(1-this.settings.padding);
+
 	this.plotAxes = {
 		x1: x1,
 		x2: x2,
@@ -49,6 +60,26 @@ PlotCanvas.prototype.setAxes = function(x1,x2,y1,y2) {
 		y2: y2
 	};
 }
+
+
+// --------------------
+// Utilities
+// --------------------
+
+PlotCanvas.prototype.width2context = function(x,axes) {
+	return Math.round(this.canvas.width*x/(axes.x2-axes.x1));
+}
+
+PlotCanvas.prototype.height2context = function(y,axes) {
+	return Math.round(this.canvas.height*(1 - y/(axes.y2-axes.y1)));
+}
+
+PlotCanvas.prototype.cart2context = function(x,y,axes) {
+	var contextX = Math.round(this.canvas.width*(x-axes.x1)/(axes.x2-axes.x1));
+	var contextY = Math.round(this.canvas.height*(1 - (y-axes.y1)/(axes.y2-axes.y1)));
+	return {x: contextX, y:contextY};
+}
+
 
 // --------------------
 // Plot elements
@@ -58,7 +89,8 @@ PlotCanvas.prototype.drawMarker = function(x, y, axes) {
 	this.context.save();
 	this.context.fillStyle = this.settings.markerColor;
 	this.context.beginPath();
-	this.context.arc(Math.round(this.canvas.width*(x-axes.x1)/(axes.x2-axes.x1)), Math.round(this.canvas.height*(1 - (y-axes.y1)/(axes.y2-axes.y1))) , this.settings.markerSize, 0, 2*Math.PI);
+	var contextP = this.cart2context(x,y,axes);
+	this.context.arc(contextP.x, contextP.y, this.settings.markerSize, 0, 2*Math.PI);
 	this.context.fill();
 	this.context.restore();
 }
@@ -75,16 +107,31 @@ PlotCanvas.prototype.drawLine = function(p1, p2, axes, type) {
 		this.context.lineWidth = this.settings.axisWidth;		
 	}
 	
-	
+	var contextP1 = this.cart2context(p1.x,p1.y,axes);
+	var contextP2 = this.cart2context(p2.x,p2.y,axes);
 	this.context.beginPath();
-	this.context.moveTo(Math.round(this.canvas.width*(p1.x-axes.x1)/(axes.x2-axes.x1)), Math.round(this.canvas.height*(1 - (p1.y-axes.y1)/(axes.y2-axes.y1))));
-	this.context.lineTo(Math.round(this.canvas.width*(p2.x-axes.x1)/(axes.x2-axes.x1)), Math.round(this.canvas.height*(1 - (p2.y-axes.y1)/(axes.y2-axes.y1))));
+	this.context.moveTo(contextP1.x, contextP1.y);
+	this.context.lineTo(contextP2.x, contextP2.y);
 	this.context.stroke();
 	this.context.restore();
 }
 
 PlotCanvas.prototype.drawBar = function(x, y, width, axes) {
+	var contextP = this.cart2context(x,y,axes);
+	var contextZ = this.cart2context(x,0,axes);
+	var contextWidth = this.width2context(width,axes);
+	
+	this.context.save();
 
+	this.context.fillStyle = this.settings.barColor;
+	this.context.rect(contextP.x - contextWidth/2, contextP.y, contextWidth, contextZ.y-contextP.y);
+	this.context.fill();
+
+	this.context.strokeStyle = this.settings.barBorderColor;
+	this.context.rect(contextP.x - contextWidth/2, contextP.y, contextWidth, contextZ.y-contextP.y);
+	this.context.stroke();
+
+	this.context.restore();
 }
 
 PlotCanvas.prototype.drawAxes = function(axes) {
@@ -99,11 +146,27 @@ PlotCanvas.prototype.drawAxes = function(axes) {
 		while(Y < this.plotAxes.y2) {
 			p1 = {x: this.plotAxes.x1, y:Y};
 			p2 = {x: this.plotAxes.x2, y:Y};
+			this.context.save();
+			this.context.fillStyle = this.settings.axisColor;
 			this.drawLine(p1, p2, this.plotAxes, "axis");
-
+			this.context.restore();
+			this.drawAxisLabel(this.plotAxes.x1, Y, Y, this.plotAxes);
 			Y += this.settings.axisYRes;
 		}
 	}
+}
+
+PlotCanvas.prototype.drawAxisLabel = function(x,y,value,axes) {
+	this.context.save();
+
+	this.context.fillStyle = this.settings.axisFontColor;
+	this.context.font = this.settings.axisFont;
+
+	var metrics = this.context.measureText(value.toString())
+	var contextP = this.cart2context(x,y,axes);
+	this.context.fillText(value.toString(), contextP.x + this.settings.space, contextP.y - this.settings.space);
+	this.context.restore();
+
 }
 
 // --------------------
@@ -126,6 +189,9 @@ PlotCanvas.prototype.linePlot = function(overrideData) {
 
 PlotCanvas.prototype.barPlot = function(overrideData) {
 	var localData = overrideData || this.data;
+	for(var i=localData.length-1; i>=0; i--) {
+		this.drawBar(i, localData[i], 1, this.plotAxes);		
+	}
 }
 
 PlotCanvas.prototype.plot = function(overrideData) {
@@ -144,23 +210,16 @@ PlotCanvas.prototype.autoplot = function(overrideData) {
 
 	var localData = overrideData || this.plotData;
 
-	var ref_x1 = 0;
-	var ref_x2 = localData.length-1;
-	var ref_y1 = Math.min.apply(null,localData);
-	var ref_y2 = Math.max.apply(null,localData);
+	var x1 = 0;
+	var x2 = localData.length-1;
+	var y1 = Math.min.apply(null,localData);
+	var y2 = Math.max.apply(null,localData);
 
 	if (this.plotType == "bar") {
 		ref_y1 = Math.min(y1,0);
 		ref_y2 = Math.max(y2,0);
 	}
 
-	var x1 = ((ref_x1+ref_x2)/2) + (ref_x1 - ((ref_x1+ref_x2)/2))/(1-this.settings.padding);
-	var x2 = ((ref_x1+ref_x2)/2) + (ref_x2 - ((ref_x1+ref_x2)/2))/(1-this.settings.padding);
-	var y1 = ((ref_y1+ref_y2)/2) + (ref_y1 - ((ref_y1+ref_y2)/2))/(1-this.settings.padding);
-	var y2 = ((ref_y1+ref_y2)/2) + (ref_y2 - ((ref_y1+ref_y2)/2))/(1-this.settings.padding);
-
 	this.setAxes(x1,x2,y1,y2);
-	this.settings.axisXRes = 1;
-	this.settings.axisYRes = Math.floor((y2-y1)/AUTO_AXIS_Y_NUM)
 	this.plot(localData);
 }
