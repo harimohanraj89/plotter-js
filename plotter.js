@@ -124,10 +124,12 @@ PlotCanvas.prototype.drawBar = function(x, y, width, axes) {
 	this.context.save();
 
 	this.context.fillStyle = this.settings.barColor;
+	this.context.beginPath();
 	this.context.rect(contextP.x - contextWidth/2, contextP.y, contextWidth, contextZ.y-contextP.y);
 	this.context.fill();
 
 	this.context.strokeStyle = this.settings.barBorderColor;
+	this.context.beginPath();
 	this.context.rect(contextP.x - contextWidth/2, contextP.y, contextWidth, contextZ.y-contextP.y);
 	this.context.stroke();
 
