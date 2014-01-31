@@ -220,6 +220,7 @@ PlotCanvas.prototype.autoplot = function(overrideData) {
 		ref_y2 = Math.max(y2,0);
 	}
 
+	this.settings.axisYRes = Math.floor( (y2-y1)/AUTO_AXIS_Y_NUM )
 	this.setAxes(x1,x2,y1,y2);
 	this.plot(localData);
 }
